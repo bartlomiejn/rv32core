@@ -1,5 +1,7 @@
+use log::{debug, trace};
 use super::bus;
 
+#[derive(Debug)]
 pub struct Rv32ICore {
     bus: Box<dyn bus::SystemBus32>,
     pc: i32,
@@ -23,10 +25,10 @@ impl Rv32ICore {
     }
 
     pub fn reset(&self) {
-
+        trace!("Reset: {:?}", &self);
     }
 
     pub fn step(&self) {
-
+        trace!("After step {:?}", &self);
     }
 }
