@@ -1,0 +1,45 @@
+/usr/local/Cellar/riscv-gnu-toolchain/master/bin/riscv64-unknown-elf-objdump -h -d main.o
+
+main.o:     file format elf32-littleriscv
+
+Sections:
+Idx Name          Size      VMA       LMA       File off  Algn
+  0 .text         0000005c  00000000  00000000  00000034  2**2
+                  CONTENTS, ALLOC, LOAD, RELOC, READONLY, CODE
+  1 .data         00000000  00000000  00000000  00000090  2**0
+                  CONTENTS, ALLOC, LOAD, DATA
+  2 .bss          00000000  00000000  00000000  00000090  2**0
+                  ALLOC
+  3 .rodata       00000019  00000000  00000000  00000090  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+  4 .comment      00000013  00000000  00000000  000000a9  2**0
+                  CONTENTS, READONLY
+  5 .riscv.attributes 0000001c  00000000  00000000  000000bc  2**0
+                  CONTENTS, READONLY
+
+Disassembly of section .text:
+
+00000000 <main>:
+   0:	fe010113          	addi	sp,sp,-32
+   4:	00112e23          	sw	ra,28(sp)
+   8:	00812c23          	sw	s0,24(sp)
+   c:	02010413          	addi	s0,sp,32
+  10:	00100793          	li	a5,1
+  14:	fef42623          	sw	a5,-20(s0)
+  18:	00400793          	li	a5,4
+  1c:	fef42423          	sw	a5,-24(s0)
+  20:	fec42703          	lw	a4,-20(s0)
+  24:	fe842783          	lw	a5,-24(s0)
+  28:	00f707b3          	add	a5,a4,a5
+  2c:	fef42223          	sw	a5,-28(s0)
+  30:	fe442583          	lw	a1,-28(s0)
+  34:	000007b7          	lui	a5,0x0
+  38:	00078513          	mv	a0,a5
+  3c:	00000097          	auipc	ra,0x0
+  40:	000080e7          	jalr	ra # 3c <main+0x3c>
+  44:	00000793          	li	a5,0
+  48:	00078513          	mv	a0,a5
+  4c:	01c12083          	lw	ra,28(sp)
+  50:	01812403          	lw	s0,24(sp)
+  54:	02010113          	addi	sp,sp,32
+  58:	00008067          	ret
