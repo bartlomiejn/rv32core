@@ -3,8 +3,10 @@ use i64;
 use std::env;
 use std::str;
 use std::process::exit;
-use std::num::ParseIntError;
-use log::{info, error};
+use std::fs;
+use std::fs::{File};
+use std::io::Read;
+use log::{info};
 use env_logger;
 
 const VAR_BIN: &str = "RV32I_BIN";
@@ -28,49 +30,41 @@ fn hexstring_to_i64(string: &String) -> Option<i64> {
     offset
 }
 
-// fn load_binary(file: String) -> Vec<u8> {
-//     let mut buffer: Vec<u8> = Vec::new();
-//     buffer
-// }
+fn load_binary(filename: &String) -> Vec<u8> {
+    let mut f = File::open(&filename)
+        .expect(&format!("No file found at {}.", filename));
+    let metadata = fs::metadata(&filename)
+        .expect("Unable to read binary file metadata.");
+    let mut buffer = vec![0; metadata.len() as usize];
+    f.read(&mut buffer).expect("Buffer overflow.");
+
+    buffer
+}
 
 fn main() {
     env_logger::init();
 
-    let filename = env::var(VAR_BIN);
-    if filename.is_err() {
-        error!("Supply rv32i binary file to load as RV32I_BIN variable.");
-        exit(1);
-    }
-    let filename = filename.unwrap();
+    let filename = env::var(VAR_BIN)
+        .expect("Supply rv32i binary file to load as RV32I_BIN variable.");
     info!("Binary file to load: {}", filename);
 
-    let offset = env::var(VAR_OFFSET);
-    if offset.is_err() {
-        error!("Supply binary file text section offset as hex as RV32I_OFFSET.");
-        exit(1);
-    }
-    let offset =  offset.unwrap();
-    info!("Binary data offset: {}", offset);
-    let offset = hexstring_to_i64(&offset);
-    if offset.is_none() {
-        error!("Couldn't parse text section offset as hex.");
-        exit(1);
-    }
-    let offset = offset.unwrap();
+    let offset = env::var(VAR_OFFSET)
+        .expect("Supply binary file text section offset as hex as 
+            RV32I_OFFSET.");
+    info!("Text offset: {}", offset);
+    let offset = hexstring_to_i64(&offset)
+        .expect("Couldn't parse text section offset as hex.");
 
-    let len = env::var(VAR_LEN);
-    if len.is_err() {
-        error!("Supply binary file text section length as hex as RV32I_LEN.");
-        exit(1);
-    }
-    let len = len.unwrap();
-    info!("Binary data offset: {}", offset);
-    let len = hexstring_to_i64(&len);
-    if len.is_none() {
-        error!("Couldn't parse text section length as hex.");
-        exit(1);
-    }
-    let len = len.unwrap();
+    let len = env::var(VAR_LEN)
+        .expect("Supply binary file text section length as hex as 
+            RV32I_LEN.");
+    info!("Text length: {}", len);
+    let len = hexstring_to_i64(&len)
+        .expect("Couldn't parse text section length as hex.");
+
+    let binary = load_binary(&filename);
+
+    info!("Binary loaded.");
 
     let bus = Box::new(riscv::SystemBus::new());
     let mut core = riscv::Rv32ICore::new(bus);
