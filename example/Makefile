@@ -6,3 +6,5 @@ binary:
 
 dump:
 	$(OBJDUMP) -h -d main.o > dump
+
+.PHONY: binary dump 

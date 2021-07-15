@@ -1,4 +1,3 @@
-/usr/local/Cellar/riscv-gnu-toolchain/master/bin/riscv64-unknown-elf-objdump -h -d main.o
 
 main.o:     file format elf32-littleriscv
 

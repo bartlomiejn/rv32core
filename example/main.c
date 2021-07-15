@@ -4,6 +4,6 @@ int main() {
     int a = 1;
     int b = 4;
     int c = a + b;
-    printf("Hello world! Result: %d\n", c);
-    return 0;
+    // printf("Hello world! Result: %d\n", c);
+    return c;
 }
