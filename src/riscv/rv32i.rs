@@ -1,5 +1,5 @@
-use log::{debug, trace};
 use super::bus::BusInterface;
+use log::{debug, trace};
 
 #[derive(Debug)]
 pub struct Rv32ICore {
@@ -25,18 +25,29 @@ impl Rv32ICore {
     }
 
     pub fn reset(&mut self) {
-        trace!("Reset: {:?}", &self);
+        debug!("Reset");
+    }
+
+    pub fn set_pc(&mut self, pc: u32) {
+        debug!("Set pc: {}", pc);
+        self.pc = pc;
     }
 
     pub fn step(&mut self) {
-        let instr = self.bus.read(self.pc);
+        let instr = self.bus.read32(self.pc);
+        self.decode_and_execute(instr);
 
-        self.pc += 1;
-
-        trace!("After step {:?}", &self);
+        trace!("After step 0x{:?}", &self);
     }
 
-    fn decode(&mut self, instr: u32) {
+    fn decode_and_execute(&mut self, instr: u32) {
+        trace!("Decode instruction 0x{:x}", instr);
 
+        let opcode: u8 = instr as u8 & 0x7f;
+        let funct3: u8 = (instr >> 12) as u8 & 0x7;
+
+        trace!("opcode 0x{:x} funct3: 0x{:x}", opcode, funct3);
+
+        // LB LH LW - Load Byte, Halfword, Word
     }
 }
