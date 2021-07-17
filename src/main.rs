@@ -64,9 +64,10 @@ fn main() {
 
     let mut eei = Box::new(riscv::SoftwareInterface::new());
     eei.load(&binary, 0x0);
+
     info!("Binary read & loaded");
 
-    let mut core = riscv::Rv32ICore::new(eei);
+    let mut core = riscv::Rv32I::new(eei);
 
     info!("RV32I core created");
 
