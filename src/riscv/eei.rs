@@ -1,10 +1,11 @@
 use std::mem::transmute;
+use std::error::Error;
 use log::{debug, trace};
 use core::fmt;
 
 pub trait ExecutionEnvironmentInterface {
-    fn read32(&self, addr: u32) -> Result<u32, dyn std::error>;
-    fn write32(&mut self, val: u32, addr: u32) -> Result<(), dyn std::error>;
+    fn read32(&self, addr: u32) -> Result<u32, Box<dyn Error>>;
+    fn write32(&mut self, val: u32, addr: u32) -> Result<(), Box<dyn Error>>;
 }
 
 impl fmt::Debug for dyn ExecutionEnvironmentInterface {
@@ -32,7 +33,7 @@ impl SoftwareInterface {
 }
 
 impl ExecutionEnvironmentInterface for SoftwareInterface {
-    fn read32(&self, addr: u32) -> Result<u32, dyn std::error> {
+    fn read32(&self, addr: u32) -> Result<u32, Box<dyn Error>> {
         let val = u32::from_be_bytes([
             self.ram[addr as usize],
             self.ram[addr as usize + 1],
@@ -43,7 +44,7 @@ impl ExecutionEnvironmentInterface for SoftwareInterface {
         Ok(val)
     }
 
-    fn write32(&mut self, val: u32, addr: u32) -> Result<(), dyn std::error> {
+    fn write32(&mut self, val: u32, addr: u32) -> Result<(), Box<dyn Error>> {
         let bytes: [u8; 4] = unsafe { transmute(val.to_be()) };
         trace!(
             "Write32 value: 0x{:x} addr: 0x{:x} bytes: {:?}", val, addr, bytes);
