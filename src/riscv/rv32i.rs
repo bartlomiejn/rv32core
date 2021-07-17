@@ -1,9 +1,9 @@
-use super::bus::BusInterface;
-use log::{debug, trace};
+use super::eei::ExecutionEnvironmentInterface;
+use log::{error, warn, debug, trace};
 
 #[derive(Debug)]
 pub struct Rv32ICore {
-    bus: Box<dyn BusInterface>,
+    eei: Box<dyn ExecutionEnvironmentInterface>,
     pc: u32,
     x0: u32, x1: u32, x2: u32, x3: u32, x4: u32, x5: u32, x6: u32, x7: u32,
     x8: u32, x9: u32, x10: u32, x11: u32, x12: u32, x13: u32, x14: u32, 
@@ -13,9 +13,9 @@ pub struct Rv32ICore {
 }
 
 impl Rv32ICore {
-    pub fn new(bus: Box<dyn BusInterface>) -> Self {
+    pub fn new(eei: Box<dyn ExecutionEnvironmentInterface>) -> Self {
         Self {
-            bus: bus,
+            eei,
             pc: 0,
             x0: 0, x1: 0, x2: 0, x3: 0, x4: 0, x5: 0, x6: 0, x7: 0, x8: 0, 
             x9: 0, x10: 0, x11: 0, x12: 0, x13: 0, x14: 0, x15: 0, x16: 0, 
@@ -34,20 +34,46 @@ impl Rv32ICore {
     }
 
     pub fn step(&mut self) {
-        let instr = self.bus.read32(self.pc);
-        self.decode_and_execute(instr);
-
+        let instr = self.eei.read32(self.pc);
+        match instr {
+            Ok(instr) => self.decode_and_execute(instr),
+            Err(err) => error!("EEI read error {}", err),
+        }
         trace!("After step 0x{:?}", &self);
     }
 
     fn decode_and_execute(&mut self, instr: u32) {
         trace!("Decode instruction 0x{:x}", instr);
 
-        let opcode: u8 = instr as u8 & 0x7f;
-        let funct3: u8 = (instr >> 12) as u8 & 0x7;
+        // 32-0
+        let opcode: u8 = instr as u8 & 0b1111111; // 6-0
+        let rd_imm: u8 = (instr >> 7) as u8 & 0b11111; // 11-7
+        let funct3: u8 = (instr >> 12) as u8 & 0b111; // 14-12
+        let rs1: u8 = (instr >> 15) as u8 & 0b11111; // 19-15
+        let rs2: u8 = (instr >> 20) as u8 & 0b11111; // 24-20
+        let imm_31_20: u16 = (instr >> 20) as u16 & 0b11111111111 // 31-20
+;
+        trace!(
+            "opcode: 0x{:x} rd: 0x{:x} funct3: 0x{:x}", opcode, rd_imm, funct3);
 
-        trace!("opcode 0x{:x} funct3: 0x{:x}", opcode, funct3);
+        // https://github.com/riscv/riscv-opcodes/blob/master/opcodes-rv32i
+        match (opcode, funct3) {
+            // Load
+            (0x3, 0x0) => self.LB(rd_imm, rs1, imm_31_20),
+            (0x3, 0x1) => trace!("LH"),
+            (0x3, 0x2) => trace!("LW"),
+            (0x3, 0x3) => trace!("LBU"),
+            (0x3, 0x4) => trace!("LHU"), 
+            // Store
+            (0x23, 0x0) => trace!("SB"),
+            (0x23, 0x1) => trace!("SH"),
+            (0x23, 0x2) => trace!("SW"),
+            // Other
+            (_, _) => warn!("Unhandled/invalid instruction"),
+        }
+    }
 
-        // LB LH LW - Load Byte, Halfword, Word
+    fn LB(&mut self, rd: u8, rs1: u8, imm: u16) {
+        trace!("LB");
     }
 }

@@ -62,11 +62,11 @@ fn main() {
 
     let binary = load_binary(&filename);
 
-    let mut bus = Box::new(riscv::SystemBus::new());
-    bus.load(&binary, 0x0);
+    let mut eei = Box::new(riscv::SoftwareInterface::new());
+    eei.load(&binary, 0x0);
     info!("Binary read & loaded");
 
-    let mut core = riscv::Rv32ICore::new(bus);
+    let mut core = riscv::Rv32ICore::new(eei);
 
     info!("RV32I core created");
 
