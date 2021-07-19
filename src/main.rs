@@ -13,18 +13,13 @@ const VAR_LEN: &str = "RV32I_LEN";
 
 fn hexstring_to_u32(string: &String) -> Option<u32> {
     let offset: Option<u32>;
-
-    // Remove 0x 0X prefixes if any.
     let stripped_str = string
         .strip_prefix("0x")
         .or_else(|| string.strip_prefix("0X"));
-
-    // For both no prefixes and prefix removed case convert to an i64.
     match stripped_str {
         Some(str) => offset = u32::from_str_radix(str.trim(), 16).ok(),
         None => offset = u32::from_str_radix(&string.trim(), 16).ok(),
     }
-
     offset
 }
 
@@ -35,7 +30,6 @@ fn load_binary(filename: &String) -> Vec<u8> {
         .expect("Unable to read binary file metadata");
     let mut buffer = vec![0; metadata.len() as usize];
     f.read(&mut buffer).expect("Other error");
-
     buffer
 }
 

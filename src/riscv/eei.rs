@@ -3,12 +3,12 @@ use std::error::Error;
 use log::{debug, trace};
 use core::fmt;
 
-pub trait ExecutionEnvironmentInterface {
+pub trait EEI {
     fn read32(&self, addr: u32) -> Result<u32, Box<dyn Error>>;
     fn write32(&mut self, val: u32, addr: u32) -> Result<(), Box<dyn Error>>;
 }
 
-impl fmt::Debug for dyn ExecutionEnvironmentInterface {
+impl fmt::Debug for dyn EEI {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let ptr = self as *const Self;
         fmt::Pointer::fmt(&ptr, f)
@@ -32,7 +32,7 @@ impl SoftwareInterface {
     }
 }
 
-impl ExecutionEnvironmentInterface for SoftwareInterface {
+impl EEI for SoftwareInterface {
     fn read32(&self, addr: u32) -> Result<u32, Box<dyn Error>> {
         let val = u32::from_be_bytes([
             self.ram[addr as usize],
