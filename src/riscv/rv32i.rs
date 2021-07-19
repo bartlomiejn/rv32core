@@ -5,16 +5,31 @@ use std::fmt;
 use std::convert::TryFrom;
 use log::{error, debug, trace};
 
+const LB: u8 = 0x0;
+const LH: u8 = 0x1;
+const LW: u8 = 0x2; 
+const LBU: u8 = 0x3;
+const LHU: u8 = 0x4;
+const SB: u8 = 0x0;
+const SH: u8 = 0x1;
+const SW: u8 = 0x2; 
+const ADDI: u8 = 0x0;
+const SLTI: u8 = 0x2;
+const SLTIU: u8 = 0x3;
+const XORI: u8 = 0x4;
+const ORI: u8 = 0x6;
+const ANDI: u8 = 0x7;
+
 #[derive(Debug, Clone)]
 enum Error {
-    LoadStoreException(u8),
+    Funct3Exception(u8),
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Error::LoadStoreException(funct3) =>
-                write!(f, "Invalid load/store funct3 {}", funct3),
+            Error::Funct3Exception(funct3) =>
+                write!(f, "Invalid funct3 {}", funct3),
         }
     }
 }
@@ -28,6 +43,7 @@ impl error::Error for Error {
 enum Opcode {
     Load = 0x3,
     Store = 0x23,
+    OP_IMM = 0x13,
 }
 
 impl TryFrom<u8> for Opcode {
@@ -37,6 +53,7 @@ impl TryFrom<u8> for Opcode {
         match v {
             x if x == Self::Load as u8 => Ok(Self::Load),
             x if x == Self::Store as u8 => Ok(Self::Store),
+            x if x == Self::OP_IMM as u8 => Ok(Self::OP_IMM),
             _ => Err(()),
         }
     }
@@ -108,9 +125,9 @@ impl Rv32I {
         match Opcode::try_from(opcode) {
             Ok(Opcode::Load) => result = self.load(funct3, rd, rs1, imm_i),
             Ok(Opcode::Store) => result = self.store(funct3, rs1, rs2, imm_s),
+            Ok(Opcode::OP_IMM) => result = self.op_imm(funct3, rd, rs1, imm_i),
             _ => error!("Unhandled/invalid instruction"),
         }
-
         // TODO: Exception handling
     }
 
@@ -133,19 +150,19 @@ impl Rv32I {
         }
 
         match funct3 {
-            0x0 => self.x[rd as usize] = temp as u8 as i8 as i32 as u32,
-            0x1 => self.x[rd as usize] = temp as u16 as i16 as i32 as u32,
-            0x2 => self.x[rd as usize] = temp,
-            0x3 => self.x[rd as usize] = temp & 0xff,
-            0x4 => self.x[rd as usize] = temp & 0xffff,
+            LB => self.x[rd as usize] = temp as u8 as i8 as i32 as u32,
+            LH => self.x[rd as usize] = temp as u16 as i16 as i32 as u32,
+            LW => self.x[rd as usize] = temp,
+            LBU => self.x[rd as usize] = temp & 0xff,
+            LHU => self.x[rd as usize] = temp & 0xffff,
             _ => {
                 error!("Invalid funct3");
-                return Err(Box::new(Error::LoadStoreException(funct3)))
+                return Err(Box::new(Error::Funct3Exception(funct3)))
             },
         }
 
         Ok(())
-    }
+    }    
 
     fn store(&mut self, funct3: u8, rs1: u8, rs2: u8, imm: u16)
     -> Result<(), Box<dyn error::Error>> {
@@ -154,14 +171,32 @@ impl Rv32I {
         let addr = base.wrapping_add(offset as u32);
 
         match funct3 {
-            0x0 => return self.eei.write8(self.x[rs2 as usize] as u8, addr),
-            0x1 => return self.eei.write16(self.x[rs2 as usize] as u16, addr),
-            0x2 => return self.eei.write32(self.x[rs2 as usize], addr),
+            SB => return self.eei.write8(self.x[rs2 as usize] as u8, addr),
+            SH => return self.eei.write16(self.x[rs2 as usize] as u16, addr),
+            SW => return self.eei.write32(self.x[rs2 as usize], addr),
             _ => {
                 error!("Invalid funct3");
-                return Err(Box::new(Error::LoadStoreException(funct3)))
+                return Err(Box::new(Error::Funct3Exception(funct3)))
             },
         }
+    }
+
+    fn op_imm(&mut self, funct3: u8, rd: u8, rs1: u8, imm: u16)
+    -> Result<(), Box<dyn error::Error>> {
+        match funct3 {
+            ADDI => trace!("addi"),
+            SLTI => trace!("slti"),
+            SLTIU => trace!("sltiu"),
+            XORI => trace!("xori"),
+            ORI => trace!("ori"),
+            ANDI => trace!("andi"),
+            _ => {
+                error!("Invalid funct3");
+                return Err(Box::new(Error::Funct3Exception(funct3)))
+            }
+        }
+
+        Ok(())
     }
 
     fn bits(&self, val: u32, end: u8, start: u8) -> u32 {

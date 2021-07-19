@@ -75,7 +75,7 @@ impl EEI for SoftwareInterface {
     -> Result<(), Box<dyn error::Error>> {
         trace!(
             "Write8 value: 0x{:x} addr: 0x{:x}", val, addr);
-        self.ram[addr as usize + i] = val;
+        self.ram[addr as usize] = val;
         Ok(())
     }
 }
