@@ -3,18 +3,18 @@ use u32;
 use std::error;
 use std::fmt;
 use std::convert::TryFrom;
-use log::{error, warn, debug, trace};
+use log::{error, debug, trace};
 
 #[derive(Debug, Clone)]
 enum Error {
-    LoadFault(u8),
+    LoadStoreException(u8),
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Error::LoadFault(funct3) =>
-                write!(f, "Invalid load operation with funct3 {}", funct3),
+            Error::LoadStoreException(funct3) =>
+                write!(f, "Invalid load/store funct3 {}", funct3),
         }
     }
 }
@@ -106,13 +106,12 @@ impl Rv32I {
 
         let result: Result<(), Box<dyn error::Error>>;
         match Opcode::try_from(opcode) {
-            // Load
             Ok(Opcode::Load) => result = self.load(funct3, rd, rs1, imm_i),
-            // Store
-            Ok(Opcode::Store) => trace!("Store funct3: 0x{:02x}", funct3),
-            // Other
+            Ok(Opcode::Store) => result = self.store(funct3, rs1, rs2, imm_s),
             _ => error!("Unhandled/invalid instruction"),
         }
+
+        // TODO: Exception handling
     }
 
     fn load(&mut self, funct3: u8, rd: u8, rs1: u8, imm: u16) 
@@ -120,38 +119,48 @@ impl Rv32I {
         let base = self.x[rs1 as usize];
         let offset = imm as i16;
         let addr = base.wrapping_add(offset as u32);
+        let temp: u32;
 
         trace!("load funct3: {} rd: x{} rs1: x{} imm: {}", funct3, rd, rs1, 
             imm);
 
-        let result: Result<(), Box<Error>>;
-        match funct3 {
-            0x0 => {
-                trace!("LB");
-            },
-            0x1 => {
-                trace!("LH");
-            },
-            0x2 => {
-                trace!("LW");
-            },
-            0x3 => {
-                trace!("LBU");
-            },
-            0x4 => {
-                trace!("LHU");
-            },
-            _ => {
-                result = Err(Box::new(Error::LoadFault(funct3)))
+        match self.eei.read32(addr) {
+            Ok(val) => temp = val,
+            Err(err) => {
+                error!("Memory read error addr: 0x{:08x}", addr);
+                return Err(err)
             },
         }
 
-        match self.eei.read32(addr) {
-            Ok(val) => {
-                self.x[rd as usize] = val;
-                Ok(())
-            }
-            Err(err) => Err(err),
+        match funct3 {
+            0x0 => self.x[rd as usize] = temp as u8 as i8 as i32 as u32,
+            0x1 => self.x[rd as usize] = temp as u16 as i16 as i32 as u32,
+            0x2 => self.x[rd as usize] = temp,
+            0x3 => self.x[rd as usize] = temp & 0xff,
+            0x4 => self.x[rd as usize] = temp & 0xffff,
+            _ => {
+                error!("Invalid funct3");
+                return Err(Box::new(Error::LoadStoreException(funct3)))
+            },
+        }
+
+        Ok(())
+    }
+
+    fn store(&mut self, funct3: u8, rs1: u8, rs2: u8, imm: u16)
+    -> Result<(), Box<dyn error::Error>> {
+        let base = self.x[rs1 as usize];
+        let offset = imm as i16;
+        let addr = base.wrapping_add(offset as u32);
+
+        match funct3 {
+            0x0 => return self.eei.write8(self.x[rs2 as usize] as u8, addr),
+            0x1 => return self.eei.write16(self.x[rs2 as usize] as u16, addr),
+            0x2 => return self.eei.write32(self.x[rs2 as usize], addr),
+            _ => {
+                error!("Invalid funct3");
+                return Err(Box::new(Error::LoadStoreException(funct3)))
+            },
         }
     }
 

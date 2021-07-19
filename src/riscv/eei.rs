@@ -1,11 +1,16 @@
 use std::mem::transmute;
-use std::error::Error;
-use log::{debug, trace};
+use std::error;
 use core::fmt;
+use log::{debug, trace};
 
 pub trait EEI {
-    fn read32(&self, addr: u32) -> Result<u32, Box<dyn Error>>;
-    fn write32(&mut self, val: u32, addr: u32) -> Result<(), Box<dyn Error>>;
+    fn read32(&self, addr: u32) -> Result<u32, Box<dyn error::Error>>;
+    fn write32(&mut self, val: u32, addr: u32) 
+    -> Result<(), Box<dyn error::Error>>;
+    fn write16(&mut self, val: u16, addr: u32)
+    -> Result<(), Box<dyn error::Error>>;
+    fn write8(&mut self, val: u8, addr: u32)
+    -> Result<(), Box<dyn error::Error>>;
 }
 
 impl fmt::Debug for dyn EEI {
@@ -33,7 +38,7 @@ impl SoftwareInterface {
 }
 
 impl EEI for SoftwareInterface {
-    fn read32(&self, addr: u32) -> Result<u32, Box<dyn Error>> {
+    fn read32(&self, addr: u32) -> Result<u32, Box<dyn error::Error>> {
         let val = u32::from_be_bytes([
             self.ram[addr as usize],
             self.ram[addr as usize + 1],
@@ -44,17 +49,33 @@ impl EEI for SoftwareInterface {
         Ok(val)
     }
 
-    fn write32(&mut self, val: u32, addr: u32) -> Result<(), Box<dyn Error>> {
+    fn write32(&mut self, val: u32, addr: u32) 
+    -> Result<(), Box<dyn error::Error>> {
         let bytes: [u8; 4] = unsafe { transmute(val.to_be()) };
         trace!(
             "Write32 value: 0x{:x} addr: 0x{:x} bytes: {:?}", val, addr, bytes);
         for i in 0..bytes.len() {
             self.ram[addr as usize + i] = bytes[i];    
-            trace!(
-                "Write32 ram[0x{:x}]: {:?}", 
-                addr as usize + i, 
-                self.ram[addr as usize + i]);
         }
+        Ok(())
+    }
+
+    fn write16(&mut self, val: u16, addr: u32) 
+    -> Result<(), Box<dyn error::Error>> {
+        let bytes: [u8; 2] = unsafe { transmute(val.to_be()) };
+        trace!(
+            "Write16 value: 0x{:x} addr: 0x{:x} bytes: {:?}", val, addr, bytes);
+        for i in 0..bytes.len() {
+            self.ram[addr as usize + i] = bytes[i];    
+        }
+        Ok(())
+    }
+
+    fn write8(&mut self, val: u8, addr: u32) 
+    -> Result<(), Box<dyn error::Error>> {
+        trace!(
+            "Write8 value: 0x{:x} addr: 0x{:x}", val, addr);
+        self.ram[addr as usize + i] = val;
         Ok(())
     }
 }
