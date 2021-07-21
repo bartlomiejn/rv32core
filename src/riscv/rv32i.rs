@@ -170,48 +170,24 @@ impl Rv32I {
             SB => return self.eei.write8(self.x[rs2 as usize] as u8, addr),
             SH => return self.eei.write16(self.x[rs2 as usize] as u16, addr),
             SW => return self.eei.write32(self.x[rs2 as usize], addr),
-            _ => {
-                error!("Invalid funct3");
-                return Err(Box::new(Error::Funct3Exception(funct3)))
-            },
+            _ => return Err(Box::new(Error::Funct3Exception(funct3))),
         }
     }
 
     fn op_imm(&mut self, funct3: u8, rd: u8, rs1: u8, imm: u16)
     -> Result<(), Box<dyn error::Error>> {
+        let val = self.x[rs1 as usize];
+        let immi = imm as i16 as i32;
+        let rd: &mut u32 = &mut self.x[rd as usize];
         match funct3 {
-            ADDI => {
-                self.x[rd as usize] 
-                    = self.x[rs1 as usize].wrapping_add((imm as i16) as u32);
-                return Ok(())
-            },
-            SLTI => {
-                let val = self.x[rs1 as usize] as i32;
-                let immi = imm as i16 as i32;
-                if val < immi {
-                    self.x[rd as usize] = 1;
-                } else {
-                    self.x[rd as usize] = 0;
-                };
-            },
-            SLTIU => {
-                let val = self.x[rs1 as usize];
-                let immi = imm as i16 as i32 as u32;
-                if val < immi {
-                    self.x[rd as usize] = 1;
-                } else {
-                    self.x[rd as usize] = 0;
-                };
-            },
-            XORI => trace!("xori"),
-            ORI => trace!("ori"),
-            ANDI => trace!("andi"),
-            _ => {
-                error!("Invalid funct3");
-                return Err(Box::new(Error::Funct3Exception(funct3)))
-            }
+            ADDI => *rd = val.wrapping_add((imm as i16) as u32),
+            SLTI => if (val as i32) < immi { *rd = 1; } else { *rd = 0; },
+            SLTIU => if val < (immi as u32) { *rd = 1; } else { *rd = 0; },
+            XORI => *rd = val ^ (immi as u32),
+            ORI => *rd = val | (immi as u32),
+            ANDI => *rd = val & (immi as u32),
+            _ => return Err(Box::new(Error::Funct3Exception(funct3))),
         }
-
         Ok(())
     }
 
