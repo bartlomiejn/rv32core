@@ -3,6 +3,7 @@ use u32;
 use std::error;
 use std::fmt;
 use std::convert::TryFrom;
+use std::ops::Add;
 use log::{error, debug, trace};
 
 const LB: u8 = 0x0;
@@ -43,7 +44,7 @@ impl error::Error for Error {
 enum Opcode {
     Load = 0x3,
     Store = 0x23,
-    OP_IMM = 0x13,
+    OpImm = 0x13,
 }
 
 impl TryFrom<u8> for Opcode {
@@ -53,7 +54,7 @@ impl TryFrom<u8> for Opcode {
         match v {
             x if x == Self::Load as u8 => Ok(Self::Load),
             x if x == Self::Store as u8 => Ok(Self::Store),
-            x if x == Self::OP_IMM as u8 => Ok(Self::OP_IMM),
+            x if x == Self::OpImm as u8 => Ok(Self::OpImm),
             _ => Err(()),
         }
     }
@@ -125,7 +126,7 @@ impl Rv32I {
         match Opcode::try_from(opcode) {
             Ok(Opcode::Load) => result = self.load(funct3, rd, rs1, imm_i),
             Ok(Opcode::Store) => result = self.store(funct3, rs1, rs2, imm_s),
-            Ok(Opcode::OP_IMM) => result = self.op_imm(funct3, rd, rs1, imm_i),
+            Ok(Opcode::OpImm) => result = self.op_imm(funct3, rd, rs1, imm_i),
             _ => error!("Unhandled/invalid instruction"),
         }
         // TODO: Exception handling
@@ -133,9 +134,7 @@ impl Rv32I {
 
     fn load(&mut self, funct3: u8, rd: u8, rs1: u8, imm: u16) 
     -> Result<(), Box<dyn error::Error>> {
-        let base = self.x[rs1 as usize];
-        let offset = imm as i16;
-        let addr = base.wrapping_add(offset as u32);
+        let addr = self.imm_addr(rs1, imm);
         let temp: u32;
 
         trace!("load funct3: {} rd: x{} rs1: x{} imm: {}", funct3, rd, rs1, 
@@ -166,10 +165,7 @@ impl Rv32I {
 
     fn store(&mut self, funct3: u8, rs1: u8, rs2: u8, imm: u16)
     -> Result<(), Box<dyn error::Error>> {
-        let base = self.x[rs1 as usize];
-        let offset = imm as i16;
-        let addr = base.wrapping_add(offset as u32);
-
+        let addr = self.imm_addr(rs1, imm);
         match funct3 {
             SB => return self.eei.write8(self.x[rs2 as usize] as u8, addr),
             SH => return self.eei.write16(self.x[rs2 as usize] as u16, addr),
@@ -184,9 +180,29 @@ impl Rv32I {
     fn op_imm(&mut self, funct3: u8, rd: u8, rs1: u8, imm: u16)
     -> Result<(), Box<dyn error::Error>> {
         match funct3 {
-            ADDI => trace!("addi"),
-            SLTI => trace!("slti"),
-            SLTIU => trace!("sltiu"),
+            ADDI => {
+                self.x[rd as usize] 
+                    = self.x[rs1 as usize].wrapping_add((imm as i16) as u32);
+                return Ok(())
+            },
+            SLTI => {
+                let val = self.x[rs1 as usize] as i32;
+                let immi = imm as i16 as i32;
+                if val < immi {
+                    self.x[rd as usize] = 1;
+                } else {
+                    self.x[rd as usize] = 0;
+                };
+            },
+            SLTIU => {
+                let val = self.x[rs1 as usize];
+                let immi = imm as i16 as i32 as u32;
+                if val < immi {
+                    self.x[rd as usize] = 1;
+                } else {
+                    self.x[rd as usize] = 0;
+                };
+            },
             XORI => trace!("xori"),
             ORI => trace!("ori"),
             ANDI => trace!("andi"),
@@ -197,6 +213,11 @@ impl Rv32I {
         }
 
         Ok(())
+    }
+
+    fn imm_addr(&self, rs1: u8, imm: u16) -> u32 {
+        self.x[rs1 as usize].wrapping_add(imm as i16 as u32)
+        
     }
 
     fn bits(&self, val: u32, end: u8, start: u8) -> u32 {
