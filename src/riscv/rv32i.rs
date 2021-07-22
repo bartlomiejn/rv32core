@@ -10,6 +10,7 @@ const STORE: u8 = 0x23;
 const OPIMM: u8 = 0x13;
 const LUI: u8 = 0x37;
 const AUIPC: u8 = 0x17;
+const OP: u8 = 0x33;
 
 // Funct3
 const LB: u8 = 0x0;
@@ -30,6 +31,17 @@ const XORI: u8 = 0x4;
 const SRLI_SRAI: u8 = 0x5;
 const ORI: u8 = 0x6;
 const ANDI: u8 = 0x7;
+
+const ADD: u8 = 0x0;
+const SUB: u8 = 0x0;
+const SLL: u8 = 0x1;
+const SLT: u8 = 0x2;
+const SLTU: u8 = 0x3;
+const XOR: u8 = 0x4;
+const SRL: u8 = 0x5;
+const SRA: u8 = 0x5;
+const OR: u8 = 0x6;
+const AND: u8 = 0x7;
 
 #[derive(Debug, Clone)]
 enum Error {
@@ -128,6 +140,7 @@ impl Rv32I {
             OPIMM => return self.op_imm(funct3, rd, rs1, imm_i),
             LUI => return self.lui(rd, imm_u),
             AUIPC => return self.auipc(rd, imm_u),
+            OP => return self.op(funct3, rd, rs1, rs2, funct7),
             _ => return Err(Box::new(Error::InvalidOpcode(opcode))),
         }
     }
@@ -198,6 +211,27 @@ impl Rv32I {
 
     fn auipc(&mut self, rd: u8, imm: u32) -> Result<(), Box<dyn error::Error>> {
         self.x[rd as usize] = self.pc + (imm << 12);
+        Ok(())
+    }
+
+    fn op(&mut self, funct3: u8, rd: u8, rs1: u8, rs2: u8, funct7: u8)
+    -> Result<(), Box<dyn error::Error>> {
+        let rd: *mut u32 = &mut self.x[rd as usize];
+        let rs1: *mut u32 = &mut self.x[rs1 as usize];
+        let rs2: *mut u32 = &mut self.x[rs2 as usize];
+        match (funct3, funct7) {
+            (ADD, 0x0) => unsafe { *rd = rs1.wrapping_add(*rs2) },
+            (SUB, 0x32) => *rd = rs1.wrapping_sub(*rs2),
+            (SLL, 0x0) => (),
+            (SLT, 0x0) => (),
+            (SLTU, 0x0) => (),
+            (XOR, 0x0) => (),
+            (SRL, 0x0) => (),
+            (SRA, 0x32) => (),
+            (OR, 0x0) => (),
+            (AND, 0x0) => (),
+            (_, _) => return Err(Box::new(Error::InvalidFunct3(funct3))),
+        }
         Ok(())
     }
 
