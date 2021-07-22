@@ -8,6 +8,8 @@ use log::{error, debug, trace};
 const LOAD: u8 = 0x3;
 const STORE: u8 = 0x23;
 const OPIMM: u8 = 0x13;
+const LUI: u8 = 0x37;
+const AUIPC: u8 = 0x17;
 
 // Funct3
 const LB: u8 = 0x0;
@@ -124,6 +126,8 @@ impl Rv32I {
             LOAD => return self.load(funct3, rd, rs1, imm_i),
             STORE => return self.store(funct3, rs1, rs2, imm_s),
             OPIMM => return self.op_imm(funct3, rd, rs1, imm_i),
+            LUI => return self.lui(rd, imm_u),
+            AUIPC => return self.auipc(rd, imm_u),
             _ => return Err(Box::new(Error::InvalidOpcode(opcode))),
         }
     }
@@ -184,6 +188,16 @@ impl Rv32I {
             ANDI => *rd = val & (immi as u32),
             _ => return Err(Box::new(Error::InvalidFunct3(funct3))),
         }
+        Ok(())
+    }
+
+    fn lui(&mut self, rd: u8, imm: u32) -> Result<(), Box<dyn error::Error>> {
+        self.x[rd as usize] = imm << 12;
+        Ok(())
+    }
+
+    fn auipc(&mut self, rd: u8, imm: u32) -> Result<(), Box<dyn error::Error>> {
+        self.x[rd as usize] = self.pc + (imm << 12);
         Ok(())
     }
 
