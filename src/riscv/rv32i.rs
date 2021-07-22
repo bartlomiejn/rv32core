@@ -2,9 +2,14 @@ use super::eei::EEI;
 use u32;
 use std::error;
 use std::fmt;
-use std::convert::TryFrom;
 use log::{error, debug, trace};
 
+// Opcode
+const LOAD: u8 = 0x3;
+const STORE: u8 = 0x23;
+const OPIMM: u8 = 0x13;
+
+// Funct3
 const LB: u8 = 0x0;
 const LH: u8 = 0x1;
 const LW: u8 = 0x2; 
@@ -22,13 +27,16 @@ const ANDI: u8 = 0x7;
 
 #[derive(Debug, Clone)]
 enum Error {
-    Funct3Exception(u8),
+    InvalidOpcode(u8),
+    InvalidFunct3(u8),
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Error::Funct3Exception(funct3) =>
+            Error::InvalidOpcode(opcode) =>
+                write!(f, "Invalid opcode {}", opcode),
+            Error::InvalidFunct3(funct3) =>
                 write!(f, "Invalid funct3 {}", funct3),
         }
     }
@@ -37,25 +45,6 @@ impl fmt::Display for Error {
 impl error::Error for Error {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match *self { _ => None, }
-    }
-}
-
-enum Opcode {
-    Load = 0x3,
-    Store = 0x23,
-    OpImm = 0x13,
-}
-
-impl TryFrom<u8> for Opcode {
-    type Error = ();
-
-    fn try_from(v: u8) -> Result<Self, Self::Error> {
-        match v {
-            x if x == Self::Load as u8 => Ok(Self::Load),
-            x if x == Self::Store as u8 => Ok(Self::Store),
-            x if x == Self::OpImm as u8 => Ok(Self::OpImm),
-            _ => Err(()),
-        }
     }
 }
 
@@ -81,15 +70,19 @@ impl Rv32I {
     }
 
     pub fn step(&mut self) {
-        let instr = self.eei.read32(self.pc);
-        match instr {
-            Ok(instr) => self.decode_and_execute(instr),
-            Err(err) => error!("EEI read error {}", err),
-        }
+        let _ = self.eei
+            .read32(self.pc)
+            .and_then(|instr| self.decode_and_execute(instr))
+            .or_else(|err| -> Result<(), Box<dyn error::Error>> {
+                error!("Error: {}", err);
+                Ok(())
+            });
+        self.pc += 1;
         trace!("State {:?}", &self);
     }
 
-    fn decode_and_execute(&mut self, instr: u32) {
+    fn decode_and_execute(&mut self, instr: u32)
+    -> Result<(), Box<dyn error::Error>> {
         let opcode: u8 = self.bits(instr, 6, 0) as u8;
         let funct3: u8 = self.bits(instr, 14, 12) as u8;
         let funct7: u8 = self.bits(instr, 31, 25) as u8;
@@ -121,14 +114,12 @@ impl Rv32I {
 
         // https://github.com/riscv/riscv-opcodes/blob/master/opcodes-rv32i
 
-        let result: Result<(), Box<dyn error::Error>>;
-        match Opcode::try_from(opcode) {
-            Ok(Opcode::Load) => result = self.load(funct3, rd, rs1, imm_i),
-            Ok(Opcode::Store) => result = self.store(funct3, rs1, rs2, imm_s),
-            Ok(Opcode::OpImm) => result = self.op_imm(funct3, rd, rs1, imm_i),
-            _ => error!("Unhandled/invalid instruction"),
+        match opcode {
+            LOAD => return self.load(funct3, rd, rs1, imm_i),
+            STORE => return self.store(funct3, rs1, rs2, imm_s),
+            OPIMM => return self.op_imm(funct3, rd, rs1, imm_i),
+            _ => return Err(Box::new(Error::InvalidOpcode(opcode))),
         }
-        // TODO: Exception handling
     }
 
     fn load(&mut self, funct3: u8, rd: u8, rs1: u8, imm: u16) 
@@ -149,7 +140,7 @@ impl Rv32I {
             LW => self.x[rd as usize] = temp,
             LBU => self.x[rd as usize] = temp & 0xff,
             LHU => self.x[rd as usize] = temp & 0xffff,
-            _ => return Err(Box::new(Error::Funct3Exception(funct3))),
+            _ => return Err(Box::new(Error::InvalidFunct3(funct3))),
         }
 
         Ok(())
@@ -164,7 +155,7 @@ impl Rv32I {
             SH => 
                 return self.eei.write16(self.x[rs2 as usize] as u16, addr),
             SW => return self.eei.write32(self.x[rs2 as usize], addr),
-            _ => return Err(Box::new(Error::Funct3Exception(funct3))),
+            _ => return Err(Box::new(Error::InvalidFunct3(funct3))),
         }
     }
 
@@ -180,7 +171,7 @@ impl Rv32I {
             XORI => *rd = val ^ (immi as u32),
             ORI => *rd = val | (immi as u32),
             ANDI => *rd = val & (immi as u32),
-            _ => return Err(Box::new(Error::Funct3Exception(funct3))),
+            _ => return Err(Box::new(Error::InvalidFunct3(funct3))),
         }
         Ok(())
     }
