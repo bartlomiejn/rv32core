@@ -15,13 +15,17 @@ const LH: u8 = 0x1;
 const LW: u8 = 0x2; 
 const LBU: u8 = 0x3;
 const LHU: u8 = 0x4;
+
 const SB: u8 = 0x0;
 const SH: u8 = 0x1;
 const SW: u8 = 0x2; 
+
 const ADDI: u8 = 0x0;
+const SLLI: u8 = 0x1;
 const SLTI: u8 = 0x2;
 const SLTIU: u8 = 0x3;
 const XORI: u8 = 0x4;
+const SRLI_SRAI: u8 = 0x5;
 const ORI: u8 = 0x6;
 const ANDI: u8 = 0x7;
 
@@ -62,6 +66,8 @@ impl Rv32I {
 
     pub fn reset(&mut self) {
         debug!("Reset");
+        self.pc = 0;
+        self.x = [0; 32];
     }
 
     pub fn set_pc(&mut self, pc: u32) {
@@ -166,9 +172,14 @@ impl Rv32I {
         let rd: &mut u32 = &mut self.x[rd as usize];
         match funct3 {
             ADDI => *rd = val.wrapping_add((imm as i16) as u32),
+            SLLI => *rd = val << (imm as u32 & 0x1f),
             SLTI => if (val as i32) < immi { *rd = 1; } else { *rd = 0; },
             SLTIU => if val < (immi as u32) { *rd = 1; } else { *rd = 0; },
             XORI => *rd = val ^ (immi as u32),
+            SRLI_SRAI if imm & 0x400 == 0 => // SRLI
+                *rd = val >> (imm as u32 & 0x1f),
+            SRLI_SRAI if imm & 0x400 != 0 => // SRAI
+                *rd = (val as i32 >> (imm & 0x1f)) as u32,
             ORI => *rd = val | (immi as u32),
             ANDI => *rd = val & (immi as u32),
             _ => return Err(Box::new(Error::InvalidFunct3(funct3))),
