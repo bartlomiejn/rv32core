@@ -3,7 +3,6 @@ use u32;
 use std::error;
 use std::fmt;
 use std::convert::TryFrom;
-use std::ops::Add;
 use log::{error, debug, trace};
 
 const LB: u8 = 0x0;
@@ -142,22 +141,15 @@ impl Rv32I {
 
         match self.eei.read32(addr) {
             Ok(val) => temp = val,
-            Err(err) => {
-                error!("Memory read error addr: 0x{:08x}", addr);
-                return Err(err)
-            },
+            Err(err) => return Err(err),
         }
-
         match funct3 {
             LB => self.x[rd as usize] = temp as u8 as i8 as i32 as u32,
             LH => self.x[rd as usize] = temp as u16 as i16 as i32 as u32,
             LW => self.x[rd as usize] = temp,
             LBU => self.x[rd as usize] = temp & 0xff,
             LHU => self.x[rd as usize] = temp & 0xffff,
-            _ => {
-                error!("Invalid funct3");
-                return Err(Box::new(Error::Funct3Exception(funct3)))
-            },
+            _ => return Err(Box::new(Error::Funct3Exception(funct3))),
         }
 
         Ok(())
@@ -167,8 +159,10 @@ impl Rv32I {
     -> Result<(), Box<dyn error::Error>> {
         let addr = self.imm_addr(rs1, imm);
         match funct3 {
-            SB => return self.eei.write8(self.x[rs2 as usize] as u8, addr),
-            SH => return self.eei.write16(self.x[rs2 as usize] as u16, addr),
+            SB => 
+                return self.eei.write8(self.x[rs2 as usize] as u8, addr),
+            SH => 
+                return self.eei.write16(self.x[rs2 as usize] as u16, addr),
             SW => return self.eei.write32(self.x[rs2 as usize], addr),
             _ => return Err(Box::new(Error::Funct3Exception(funct3))),
         }
@@ -193,7 +187,6 @@ impl Rv32I {
 
     fn imm_addr(&self, rs1: u8, imm: u16) -> u32 {
         self.x[rs1 as usize].wrapping_add(imm as i16 as u32)
-        
     }
 
     fn bits(&self, val: u32, end: u8, start: u8) -> u32 {
