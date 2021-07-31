@@ -184,21 +184,21 @@ impl Rv32I {
 
     fn op_imm(&mut self, funct3: u8, rd: u8, rs1: u8, imm: u16)
     -> Result<(), Box<dyn error::Error>> {
-        let val = self.x[rs1 as usize];
+        let rs1 = self.x[rs1 as usize];
         let immi = imm as i16 as i32;
         let rd: &mut u32 = &mut self.x[rd as usize];
         match funct3 {
-            ADDI => *rd = val.wrapping_add((imm as i16) as u32),
-            SLLI => *rd = val << (imm as u32 & 0x1f),
-            SLTI => if (val as i32) < immi { *rd = 1; } else { *rd = 0; },
-            SLTIU => if val < (immi as u32) { *rd = 1; } else { *rd = 0; },
-            XORI => *rd = val ^ (immi as u32),
+            ADDI => *rd = rs1.wrapping_add((imm as i16) as u32),
+            SLLI => *rd = rs1 << (imm as u32 & 0x1f),
+            SLTI => if (rs1 as i32) < immi { *rd = 1; } else { *rd = 0; },
+            SLTIU => if rs1 < (immi as u32) { *rd = 1; } else { *rd = 0; },
+            XORI => *rd = rs1 ^ (immi as u32),
             SRLI_SRAI if imm & 0x400 == 0 => // SRLI
-                *rd = val >> (imm as u32 & 0x1f),
+                *rd = rs1 >> (imm as u32 & 0x1f),
             SRLI_SRAI if imm & 0x400 != 0 => // SRAI
-                *rd = (val as i32 >> (imm & 0x1f)) as u32,
-            ORI => *rd = val | (immi as u32),
-            ANDI => *rd = val & (immi as u32),
+                *rd = (rs1 as i32 >> (imm & 0x1f)) as u32,
+            ORI => *rd = rs1 | (immi as u32),
+            ANDI => *rd = rs1 & (immi as u32),
             _ => return Err(Box::new(Error::InvalidFunct3(funct3))),
         }
         Ok(())
@@ -216,18 +216,18 @@ impl Rv32I {
 
     fn op(&mut self, funct3: u8, rd: u8, rs1: u8, rs2: u8, funct7: u8)
     -> Result<(), Box<dyn error::Error>> {
-        let rd: *mut u32 = &mut self.x[rd as usize];
-        let rs1: *mut u32 = &mut self.x[rs1 as usize];
-        let rs2: *mut u32 = &mut self.x[rs2 as usize];
+        let rs1 = self.x[rs1 as usize];
+        let rs2 = self.x[rs2 as usize];
+        let rd = &mut self.x[rd as usize];
         match (funct3, funct7) {
-            (ADD, 0x0) => unsafe { *rd = rs1.wrapping_add(*rs2) },
-            (SUB, 0x32) => *rd = rs1.wrapping_sub(*rs2),
-            (SLL, 0x0) => (),
-            (SLT, 0x0) => (),
+            (ADD, 0x0) => *rd = rs1.wrapping_add(rs2),
+            (SUB, 0x32) => *rd = rs1.wrapping_sub(rs2),
+            (SLL, 0x0) => *rd = rs1 << (rs2 & 0x1f),
+            (SLT, 0x0) => (), 
             (SLTU, 0x0) => (),
             (XOR, 0x0) => (),
-            (SRL, 0x0) => (),
-            (SRA, 0x32) => (),
+            (SRL, 0x0) => *rd = rs1 >> (rs2 & 0x1f),
+            (SRA, 0x32) => *rd = (rs1 as i32 >> (rs2 & 0x1f)) as u32,
             (OR, 0x0) => (),
             (AND, 0x0) => (),
             (_, _) => return Err(Box::new(Error::InvalidFunct3(funct3))),
