@@ -11,6 +11,9 @@ const OPIMM: u8 = 0x13;
 const LUI: u8 = 0x37;
 const AUIPC: u8 = 0x17;
 const OP: u8 = 0x33;
+const JAL: u8 = 0x6f;
+const JALR: u8 = 0x67;
+const BRANCH: u8 = 0x63;
 
 // Funct3
 const LB: u8 = 0x0;
@@ -141,6 +144,9 @@ impl Rv32I {
             LUI => return self.lui(rd, imm_u),
             AUIPC => return self.auipc(rd, imm_u),
             OP => return self.op(funct3, rd, rs1, rs2, funct7),
+            JAL => return self.jal(rd, imm_j),
+            JALR => return self.jalr(rd, rs1, imm_i),
+            BRANCH => return self.branch(funct3, rs1, rs2, imm_b),
             _ => return Err(Box::new(Error::InvalidOpcode(opcode))),
         }
     }
@@ -229,7 +235,7 @@ impl Rv32I {
             (SLTU, 0x0) => 
                 if rs1 < rs2 { *rd = 1; } 
                 else { *rd = 0; },
-                // TODO: missing x0 case
+                // TODO: check whether SLTU rd, x0, rs2 case works correctly
             (XOR, 0x0) => *rd = rs1 ^ rs2,
             (SRL, 0x0) => *rd = rs1 >> (rs2 & 0x1f),
             (SRA, 0x32) => *rd = (rs1 as i32 >> (rs2 & 0x1f)) as u32,
@@ -237,6 +243,20 @@ impl Rv32I {
             (AND, 0x0) => *rd = rs1 & rs2,
             (_, _) => return Err(Box::new(Error::InvalidFunct3(funct3))),
         }
+        Ok(())
+    }
+
+    fn jal(&mut self, rd: u8, imm: u32) -> Result<(), Box<dyn error::Error>> {
+        Ok(())
+    }
+
+    fn jalr(&mut self, rd: u8, rs1: u8, imm: u16)
+    -> Result<(), Box<dyn error::Error>> {
+        Ok(())
+    }
+
+    fn branch(&mut self, funct3: u8, rs1: u8, rs2: u8, imm_b: u32) 
+    -> Result<(), Box<dyn error::Error>> {
         Ok(())
     }
 
