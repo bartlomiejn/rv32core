@@ -223,13 +223,18 @@ impl Rv32I {
             (ADD, 0x0) => *rd = rs1.wrapping_add(rs2),
             (SUB, 0x32) => *rd = rs1.wrapping_sub(rs2),
             (SLL, 0x0) => *rd = rs1 << (rs2 & 0x1f),
-            (SLT, 0x0) => (), 
-            (SLTU, 0x0) => (),
-            (XOR, 0x0) => (),
+            (SLT, 0x0) => 
+                if (rs1 as i32) < (rs2 as i32) { *rd = 1; }
+                else { *rd = 0; },
+            (SLTU, 0x0) => 
+                if rs1 < rs2 { *rd = 1; } 
+                else { *rd = 0; },
+                // TODO: missing x0 case
+            (XOR, 0x0) => *rd = rs1 ^ rs2,
             (SRL, 0x0) => *rd = rs1 >> (rs2 & 0x1f),
             (SRA, 0x32) => *rd = (rs1 as i32 >> (rs2 & 0x1f)) as u32,
-            (OR, 0x0) => (),
-            (AND, 0x0) => (),
+            (OR, 0x0) => *rd = rs1 | rs2,
+            (AND, 0x0) => *rd = rs1 & rs2,
             (_, _) => return Err(Box::new(Error::InvalidFunct3(funct3))),
         }
         Ok(())
