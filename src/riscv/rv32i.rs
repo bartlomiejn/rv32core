@@ -271,4 +271,19 @@ impl Rv32I {
         }
         (val >> start) & mask
     }
+
+    fn sign_extend(val: u32, width: u8) -> u32 {
+        let sign = val >> (width - 1);
+        let mut res = 0x0u32;
+        if sign == 0 {
+            res |= val;
+        } else {
+            let mut mask = 0x0u32;
+            for _ in 0..width {
+                mask = (mask << 1) | 1
+            }
+            res = (!mask) | val;
+        }
+        res
+    }
 }
