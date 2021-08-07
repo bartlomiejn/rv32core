@@ -50,6 +50,7 @@ const AND: u8 = 0x7;
 enum Error {
     InvalidOpcode(u8),
     InvalidFunct3(u8),
+    InstrAddrMisaligned(u32),
 }
 
 impl fmt::Display for Error {
@@ -59,6 +60,8 @@ impl fmt::Display for Error {
                 write!(f, "Invalid opcode {}", opcode),
             Error::InvalidFunct3(funct3) =>
                 write!(f, "Invalid funct3 {}", funct3),
+            Error::InstrAddrMisaligned(addr) =>
+                write!(f, "Instruction address misaligned 0x{:08x}", addr),
         }
     }
 }
@@ -137,7 +140,6 @@ impl Rv32I {
             funct7, rd, rs1, rs2);
 
         // https://github.com/riscv/riscv-opcodes/blob/master/opcodes-rv32i
-
         match opcode {
             LOAD => return self.load(funct3, rd, rs1, imm_i),
             STORE => return self.store(funct3, rs1, rs2, imm_s),
@@ -248,13 +250,18 @@ impl Rv32I {
     }
 
     fn jal(&mut self, rd: u8, imm: u32) -> Result<(), Box<dyn error::Error>> {
+        let target = self.pc.wrapping_add(self.sext(imm, 21));
+        if target % 4 != 0 {  
+            return Err(Box::new(Error::InstrAddrMisaligned(target)))
+        }
         self.x[rd as usize] = self.pc + 4;
-        self.pc = self.pc.wrapping_add(self.sext(imm, 21));
+        self.pc = target;
         Ok(())
     }
 
     fn jalr(&mut self, rd: u8, rs1: u8, imm: u16)
     -> Result<(), Box<dyn error::Error>> {
+
         Ok(())
     }
 
