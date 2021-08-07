@@ -100,7 +100,7 @@ impl Rv32I {
                 error!("Error: {}", err);
                 Ok(())
             });
-        self.pc += 1;
+        self.pc += 4;
         trace!("State {:?}", &self);
     }
 
@@ -114,21 +114,22 @@ impl Rv32I {
         let rs1: u8 = self.bits(instr, 19, 15) as u8;
         let rs2: u8 = self.bits(instr, 24, 20) as u8;
 
+        // TODO: Verify immediate values with riscv-spec
         let imm_i: u16 = self.bits(instr, 31, 20) as u16;
         let imm_s: u16 = 
             ((self.bits(instr, 31, 25) as u16) << 5)
             | self.bits(instr, 11, 7) as u16;
-        let imm_u: u32 = self.bits(instr, 31, 12);
+        let imm_u: u32 = self.bits(instr, 31, 12) << 12;
         let imm_b: u32 = 
             self.bits(instr, 11, 8) << 1 
             | self.bits(instr, 30, 25) << 5
             | self.bits(instr, 7, 7) << 11
-            | self.bits(instr, 31, 31) << 12;
+            | self.bits(instr, 31, 31) << 12; // 13
         let imm_j: u32 = 
             self.bits(instr, 30, 21) << 1
             | self.bits(instr, 20, 20) << 11
             | self.bits(instr, 19, 12) << 12
-            | self.bits(instr, 31, 31) << 20;
+            | self.bits(instr, 31, 31) << 20; // 21
 
         trace!(
             "Decode instruction 0x{:08x} opcode: 0x{:02x} funct3: 0x{:02x} 
@@ -247,6 +248,8 @@ impl Rv32I {
     }
 
     fn jal(&mut self, rd: u8, imm: u32) -> Result<(), Box<dyn error::Error>> {
+        self.x[rd as usize] = self.pc + 4;
+        self.pc = self.pc.wrapping_add(self.sext(imm, 21));
         Ok(())
     }
 
@@ -272,7 +275,7 @@ impl Rv32I {
         (val >> start) & mask
     }
 
-    fn sign_extend(val: u32, width: u8) -> u32 {
+    fn sext(&self, val: u32, width: u8) -> u32 {
         let sign = val >> (width - 1);
         let mut res = 0x0u32;
         if sign == 0 {
