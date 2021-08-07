@@ -118,7 +118,8 @@ impl Rv32I {
         let rs2: u8 = self.bits(instr, 24, 20) as u8;
 
         // TODO: Verify immediate values with riscv-spec
-        let imm_i: u16 = self.bits(instr, 31, 20) as u16;
+        let imm_i: u16 = self.bits(instr, 31, 20) as u16; // 12
+        // TODO: Is S immediate correct?
         let imm_s: u16 = 
             ((self.bits(instr, 31, 25) as u16) << 5)
             | self.bits(instr, 11, 7) as u16;
@@ -261,7 +262,15 @@ impl Rv32I {
 
     fn jalr(&mut self, rd: u8, rs1: u8, imm: u16)
     -> Result<(), Box<dyn error::Error>> {
-
+        let target = self
+            .x[rs1 as usize]
+            .wrapping_add(self.sext(imm as u32, 12)) 
+            & 0xfffffffe;
+        if target % 4 != 0 {
+            return Err(Box::new(Error::InstrAddrMisaligned(target)))
+        }
+        self.x[rd as usize] = self.pc + 4;
+        self.pc = target;
         Ok(())
     }
 
