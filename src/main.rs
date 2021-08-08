@@ -1,5 +1,4 @@
 mod riscv;
-use u64;
 use std::env;
 use std::str;
 use std::fs;

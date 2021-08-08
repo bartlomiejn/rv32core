@@ -46,6 +46,13 @@ const SRA: u8 = 0x5;
 const OR: u8 = 0x6;
 const AND: u8 = 0x7;
 
+const BEQ: u8 = 0x0;
+const BNE: u8 = 0x1;
+const BLT: u8 = 0x4;
+const BGE: u8 = 0x5;
+const BLTU: u8 = 0x6;
+const BGEU: u8 = 0x7;
+
 #[derive(Debug, Clone)]
 enum Error {
     InvalidOpcode(u8),
@@ -274,8 +281,34 @@ impl Rv32I {
         Ok(())
     }
 
-    fn branch(&mut self, funct3: u8, rs1: u8, rs2: u8, imm_b: u32) 
+    fn branch(&mut self, funct3: u8, rs1: u8, rs2: u8, imm: u32) 
     -> Result<(), Box<dyn error::Error>> {
+        let target = self.pc.wrapping_add(self.sext(imm, 12));
+        match funct3 {
+            BEQ => if self.x[rs1 as usize] == self.x[rs2 as usize] { 
+                self.pc = target; 
+            },
+            BNE => if self.x[rs1 as usize] != self.x[rs2 as usize] { 
+                self.pc = target; 
+            },
+            BLT => 
+                if (self.x[rs1 as usize] as i32) 
+                <  (self.x[rs2 as usize] as i32) { 
+                    self.pc = target; 
+                },
+            BGE => 
+                if (self.x[rs1 as usize] as i32) 
+                >= (self.x[rs2 as usize] as i32) { 
+                    self.pc = target; 
+                },
+            BLTU => if self.x[rs1 as usize] < self.x[rs2 as usize] { 
+                self.pc = target; 
+            },
+            BGEU => if self.x[rs1 as usize] >= self.x[rs2 as usize] { 
+                self.pc = target; 
+            },
+            _ => return Err(Box::new(Error::InvalidFunct3(funct3))),
+        }
         Ok(())
     }
 
