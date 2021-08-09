@@ -11,6 +11,8 @@ pub trait EEI {
     -> Result<(), Box<dyn error::Error>>;
     fn write8(&mut self, val: u8, addr: u32)
     -> Result<(), Box<dyn error::Error>>;
+    fn ebreak(&self);
+    fn ecall(&self);
 }
 
 impl fmt::Debug for dyn EEI {
@@ -77,5 +79,13 @@ impl EEI for SoftwareInterface {
             "Write8 value: 0x{:x} addr: 0x{:x}", val, addr);
         self.ram[addr as usize] = val;
         Ok(())
+    }
+
+    fn ebreak(&self) {
+        trace!("ebreak called");
+    }
+
+    fn ecall(&self) {
+        trace!("ecall called");
     }
 }

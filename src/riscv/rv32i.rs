@@ -8,24 +8,29 @@ use log::{error, debug, trace};
 const LOAD: u8 = 0x3;
 const STORE: u8 = 0x23;
 const OPIMM: u8 = 0x13;
-const LUI: u8 = 0x37;
-const AUIPC: u8 = 0x17;
 const OP: u8 = 0x33;
 const JAL: u8 = 0x6f;
 const JALR: u8 = 0x67;
 const BRANCH: u8 = 0x63;
+const LUI: u8 = 0x37;
+const AUIPC: u8 = 0x17;
+const FENCE: u8 = 0xf;
+const SYSTEM: u8 = 0x73;
 
 // Funct3
+// LOAD
 const LB: u8 = 0x0;
 const LH: u8 = 0x1;
 const LW: u8 = 0x2; 
 const LBU: u8 = 0x3;
 const LHU: u8 = 0x4;
 
+// STORE
 const SB: u8 = 0x0;
 const SH: u8 = 0x1;
 const SW: u8 = 0x2; 
 
+// OPIMM
 const ADDI: u8 = 0x0;
 const SLLI: u8 = 0x1;
 const SLTI: u8 = 0x2;
@@ -35,6 +40,7 @@ const SRLI_SRAI: u8 = 0x5;
 const ORI: u8 = 0x6;
 const ANDI: u8 = 0x7;
 
+// OP
 const ADD: u8 = 0x0;
 const SUB: u8 = 0x0;
 const SLL: u8 = 0x1;
@@ -46,6 +52,7 @@ const SRA: u8 = 0x5;
 const OR: u8 = 0x6;
 const AND: u8 = 0x7;
 
+// BRANCH
 const BEQ: u8 = 0x0;
 const BNE: u8 = 0x1;
 const BLT: u8 = 0x4;
@@ -53,10 +60,18 @@ const BGE: u8 = 0x5;
 const BLTU: u8 = 0x6;
 const BGEU: u8 = 0x7;
 
+// SYSTEM
+const PRIV: u8 = 0x0;
+
+// Funct12
+const ECALL: u16 = 0x0;
+const EBREAK: u16 = 0x1;
+
 #[derive(Debug, Clone)]
 enum Error {
     InvalidOpcode(u8),
     InvalidFunct3(u8),
+    InvalidFunct12(u16),
     InstrAddrMisaligned(u32),
 }
 
@@ -67,6 +82,8 @@ impl fmt::Display for Error {
                 write!(f, "Invalid opcode {}", opcode),
             Error::InvalidFunct3(funct3) =>
                 write!(f, "Invalid funct3 {}", funct3),
+            Error::InvalidFunct12(funct12) =>
+                write!(f, "Invalid funct12 {}", funct12),
             Error::InstrAddrMisaligned(addr) =>
                 write!(f, "Instruction address misaligned 0x{:08x}", addr),
         }
@@ -158,6 +175,8 @@ impl Rv32I {
             JAL => return self.jal(rd, imm_j),
             JALR => return self.jalr(rd, rs1, imm_i),
             BRANCH => return self.branch(funct3, rs1, rs2, imm_b),
+            FENCE => return self.fence(funct3, rd, rs1, instr),
+            SYSTEM => return self.system(funct3, imm_i, rd, rs1),
             _ => return Err(Box::new(Error::InvalidOpcode(opcode))),
         }
     }
@@ -308,6 +327,22 @@ impl Rv32I {
                 self.pc = target; 
             },
             _ => return Err(Box::new(Error::InvalidFunct3(funct3))),
+        }
+        Ok(())
+    }
+
+    fn fence(&mut self, funct3: u8, rd: u8, rs1: u8, instr: u32)
+    -> Result<(), Box<dyn error::Error>> {
+        trace!("FENCE opcode called");
+        Ok(())
+    }
+
+    fn system(&mut self, funct3: u8, funct12: u16, rd: u8, rs1: u8)
+    -> Result<(), Box<dyn error::Error>> {
+        match funct12 {
+            ECALL => self.eei.ecall(),
+            EBREAK => self.eei.ebreak(),
+            _ => return Err(Box::new(Error::InvalidFunct12(funct12))),
         }
         Ok(())
     }
