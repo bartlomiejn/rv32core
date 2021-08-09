@@ -1,5 +1,5 @@
 # Rust artifacts
-/target
+/output
 
 # IDE 
 .vscode
