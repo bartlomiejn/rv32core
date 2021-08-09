@@ -1,11 +1,20 @@
 ROOT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
-EXTERNAL_DIR := $(ROOT_DIR)/external
-RISCV_TESTS_DIR := $(EXTERNAL_DIR)/riscv-tests
-OUTPUT_DIR := $(ROOT_DIR)/OUTPUT_DIR
+EXT_DIR := $(ROOT_DIR)/external
+EXT_TESTS_DIR := $(EXT_DIR)/riscv-tests
+OUTPUT_DIR := $(ROOT_DIR)/output
+TESTS_DIR := $(OUTPUT_DIR)/riscv-tests
 
-tests:
-	cd $(RISCV_TESTS_DIR) \
+$(OUTPUT_DIR)/.sync-tests: $(EXT_TESTS_DIR)
+	mkdir -p $(TESTS_DIR)
+	rsync --exclude='.git' -al $</ $(TESTS_DIR)
+	touch $@
+
+tests: $(OUTPUT_DIR)/.sync-tests
+	cd $(TESTS_DIR) \
 		&& autoconf \
-		&& ./configure --prefix=$$RISCV/target \
+		&& ./configure \
 		&& make
+
+clean:
+	rm -rf $(TESTS_DIR)
